@@ -2,14 +2,17 @@ FROM python:3.10.8-slim@sha256:49749648f4426b31b20fca55ad854caa55ff59dc604f2f76b
 
 FROM base as builder
 
-# Fix: Debian 11 (bullseye) reached EOL on 2026-08-31.
-# Redirect APT sources to the Debian snapshot archive so that
-# the package index and .deb files are consistent again.
-# NOTE: Do NOT append /debian after the timestamp — that creates
-# an invalid URL like .../20260825T000000Z/debian/dists/...
-RUN sed -i 's|deb.debian.org|snapshot.debian.org/archive/debian/20260825T000000Z|g' /etc/apt/sources.list \
-    && sed -i 's|security.debian.org|snapshot.debian.org/archive/debian-security/20260825T000000Z|g' /etc/apt/sources.list \
-    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/10-nocheckvalid \
+# Debian 11 (bullseye) LTS reached EOL on 2026-08-31.
+# deb.debian.org's package index and .deb files are now out of sync, causing 404s.
+# archive.debian.org has NOT yet mirrored bullseye-security.
+# Fix: completely rewrite sources.list to use the frozen snapshot.debian.org archive.
+RUN cat > /etc/apt/sources.list <<'EOF'
+deb http://snapshot.debian.org/archive/debian/20260825T000000Z bullseye main
+deb http://snapshot.debian.org/archive/debian/20260825T000000Z bullseye-updates main
+deb http://snapshot.debian.org/archive/debian-security/20260825T000000Z bullseye-security main
+EOF
+
+RUN echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/10-nocheckvalid \
     && apt-get -qq update \
     && apt-get install -y --no-install-recommends \
         wget g++ \
@@ -21,7 +24,7 @@ ENV GRPC_HEALTH_PROBE_VERSION=v0.4.18
 RUN wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
-# get packages
+# Get Python dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 

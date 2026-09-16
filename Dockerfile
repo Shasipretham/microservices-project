@@ -3,8 +3,10 @@ FROM python:3.10.8-slim@sha256:49749648f4426b31b20fca55ad854caa55ff59dc604f2f76b
 FROM base as builder
 
 # Fix: Debian 11 (bullseye) reached EOL on 2026-08-31.
-# Point APT sources to the Debian snapshot archive so that
-# package indexes and .deb files are consistent again.
+# Redirect APT sources to the Debian snapshot archive so that
+# the package index and .deb files are consistent again.
+# NOTE: Do NOT append /debian after the timestamp — that creates
+# an invalid URL like .../20260825T000000Z/debian/dists/...
 RUN sed -i 's|deb.debian.org|snapshot.debian.org/archive/debian/20260825T000000Z|g' /etc/apt/sources.list \
     && sed -i 's|security.debian.org|snapshot.debian.org/archive/debian-security/20260825T000000Z|g' /etc/apt/sources.list \
     && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/10-nocheckvalid \

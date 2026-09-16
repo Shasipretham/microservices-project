@@ -1,22 +1,14 @@
-# Copyright 2020 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 FROM python:3.10.8-slim@sha256:49749648f4426b31b20fca55ad854caa55ff59dc604f2f76b57d814e0a47c181 as base
 
 FROM base as builder
 
-RUN apt-get -qq update \
+# Fix: Debian 11 (bullseye) reached EOL on 2026-08-31.
+# Point APT sources to the Debian snapshot archive so that
+# package indexes and .deb files are consistent again.
+RUN sed -i 's|deb.debian.org|snapshot.debian.org/archive/debian/20260825T000000Z|g' /etc/apt/sources.list \
+    && sed -i 's|security.debian.org|snapshot.debian.org/archive/debian-security/20260825T000000Z|g' /etc/apt/sources.list \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/10-nocheckvalid \
+    && apt-get -qq update \
     && apt-get install -y --no-install-recommends \
         wget g++ \
     && rm -rf /var/lib/apt/lists/*
